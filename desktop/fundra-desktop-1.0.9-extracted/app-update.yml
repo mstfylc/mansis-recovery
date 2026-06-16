@@ -1,0 +1,6 @@
+owner: Uyanik-app
+repo: uyanik-desktop
+provider: github
+private: true
+releaseType: release
+updaterCacheDirName: fundra-desktop-updater

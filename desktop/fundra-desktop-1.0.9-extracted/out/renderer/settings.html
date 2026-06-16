@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<html lang="tr">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Fundra Desktop - Ayarlar</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
+          Oxygen, Ubuntu, Cantarell, sans-serif;
+        background: #f5f5f5;
+        height: 100vh;
+        -webkit-app-region: drag;
+      }
+
+      .settings-container {
+        background: white;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        -webkit-app-region: no-drag;
+      }
+
+      .settings-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        padding: 20px 30px;
+        color: white;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      }
+
+      .settings-header-left {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+      }
+
+      .back-btn {
+        width: 36px;
+        height: 36px;
+        border: none;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 8px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        font-size: 20px;
+      }
+
+      .back-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+        transform: translateX(-2px);
+      }
+
+      .settings-header h1 {
+        font-size: 22px;
+        font-weight: 600;
+      }
+
+      .window-controls {
+        display: flex;
+        gap: 10px;
+      }
+
+      .window-btn {
+        width: 28px;
+        height: 28px;
+        border: none;
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.2s ease;
+        font-size: 16px;
+      }
+
+      .window-btn:hover {
+        background: rgba(255, 255, 255, 0.3);
+      }
+
+      .settings-body {
+        flex: 1;
+        overflow-y: auto;
+        padding: 30px;
+      }
+
+      .section {
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 12px;
+        padding: 25px;
+        margin-bottom: 20px;
+      }
+
+      .section-title {
+        font-size: 18px;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 20px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+
+      .section-icon {
+        font-size: 22px;
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-group:last-child {
+        margin-bottom: 0;
+      }
+
+      .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        color: #555;
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .form-group input,
+      .form-group select {
+        width: 100%;
+        padding: 10px 15px;
+        border: 2px solid #e0e0e0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        outline: none;
+      }
+
+      .form-group input:focus,
+      .form-group select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+      }
+
+      .form-group select {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 15px center;
+        padding-right: 40px;
+      }
+
+      .info-text {
+        font-size: 13px;
+        color: #666;
+        margin-top: 6px;
+      }
+
+      .user-info {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        padding: 15px;
+        background: #f9f9f9;
+        border-radius: 8px;
+        margin-bottom: 20px;
+      }
+
+      .user-avatar {
+        width: 50px;
+        height: 50px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 20px;
+        font-weight: 600;
+      }
+
+      .user-details h3 {
+        font-size: 16px;
+        color: #333;
+        margin-bottom: 4px;
+      }
+
+      .user-details p {
+        font-size: 13px;
+        color: #666;
+      }
+
+      .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .status-badge.connected {
+        background: #d4edda;
+        color: #155724;
+      }
+
+      .status-badge.disconnected {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: currentColor;
+      }
+
+      .btn {
+        padding: 12px 24px;
+        border: none;
+        border-radius: 8px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s ease;
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+      }
+
+      .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+      }
+
+      .btn-danger {
+        background: #dc3545;
+        color: white;
+      }
+
+      .btn-danger:hover {
+        background: #c82333;
+      }
+
+      .btn-secondary {
+        background: #6c757d;
+        color: white;
+      }
+
+      .btn-secondary:hover {
+        background: #5a6268;
+      }
+
+      .action-buttons {
+        display: flex;
+        gap: 10px;
+        margin-top: 20px;
+      }
+
+      .success-message {
+        background: #d4edda;
+        border: 1px solid #c3e6cb;
+        color: #155724;
+        padding: 12px;
+        border-radius: 8px;
+        margin-bottom: 20px;
+        font-size: 14px;
+        display: none;
+      }
+
+      .success-message.show {
+        display: block;
+        animation: slideDown 0.3s ease;
+      }
+
+      @keyframes slideDown {
+        from {
+          opacity: 0;
+          transform: translateY(-10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+    </style>
+    <script type="module" crossorigin src="./assets/settings-BZK3od6p.js"></script>
+    <link rel="modulepreload" crossorigin href="./assets/constants-QTx2PBAd.js">
+  </head>
+  <body>
+    <div class="settings-container">
+      <div class="settings-header">
+        <div class="settings-header-left">
+          <button class="back-btn" id="backBtn" title="Ana Sayfaya Dön">
+            ←
+          </button>
+          <h1>⚙️ Ayarlar</h1>
+        </div>
+        <div class="window-controls">
+          <button class="window-btn" id="minimizeBtn" title="Minimize">
+            −
+          </button>
+          <button class="window-btn" id="closeBtn" title="Close">×</button>
+        </div>
+      </div>
+
+      <div class="settings-body">
+        <div id="successMessage" class="success-message"></div>
+
+        <!-- User Info Section -->
+        <div class="section">
+          <div class="section-title">
+            <span class="section-icon">👤</span>
+            Kullanıcı Bilgileri
+          </div>
+          <div class="user-info">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <div class="user-details">
+              <h3 id="userName">Yükleniyor...</h3>
+              <p id="userEmail">-</p>
+            </div>
+          </div>
+          <div class="form-group">
+            <span class="status-badge" id="connectionStatus">
+              <span class="status-dot"></span>
+              Bağlantı durumu kontrol ediliyor...
+            </span>
+          </div>
+        </div>
+
+        <!-- Printer Settings -->
+        <div class="section">
+          <div class="section-title">
+            <span class="section-icon">🖨️</span>
+            Yazıcı Ayarları
+          </div>
+          <div class="form-group">
+            <label for="printerName">Yazıcı Adı</label>
+            <select id="printerName">
+              <option value="">Yazıcı seçiniz...</option>
+            </select>
+            <div class="info-text">
+              Sistemde tanımlı yazıcılardan birini seçin
+            </div>
+          </div>
+        </div>
+
+        <!-- Receipt Logo Settings -->
+        <div class="section">
+          <div class="section-title">
+            <span class="section-icon">🖼️</span>
+            Fiş Logo Ayarları
+          </div>
+          <div class="info-text" style="margin-bottom: 15px">
+            Şirket logosunun hangi fiş türlerinde basılacağını seçin
+          </div>
+          <div class="form-group" style="display: flex; flex-direction: column; gap: 12px">
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0">
+              <input type="checkbox" id="logoEntranceTicket" style="width: auto; accent-color: #667eea" />
+              Giriş Fişi
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0">
+              <input type="checkbox" id="logoOrderTicket" style="width: auto; accent-color: #667eea" />
+              Sipariş Fişi
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0">
+              <input type="checkbox" id="logoTableCheck" style="width: auto; accent-color: #667eea" />
+              Adisyon / Hesap Fişi
+            </label>
+            <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; margin-bottom: 0">
+              <input type="checkbox" id="logoTestPrint" style="width: auto; accent-color: #667eea" />
+              Test Fişi
+            </label>
+          </div>
+        </div>
+
+        <!-- Connection Settings -->
+        <div class="section">
+          <div class="section-title">
+            <span class="section-icon">🔌</span>
+            Bağlantı Ayarları
+          </div>
+          
+          <div class="form-group">
+            <label for="reconnectInterval"
+              >Yeniden Bağlanma Süresi (saniye)</label
+            >
+            <input
+              type="number"
+              id="reconnectInterval"
+              min="5"
+              max="300"
+              value="30"
+            />
+            <div class="info-text">
+              Bağlantı koptuğunda yeniden deneme süresi
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="section">
+          <div class="section-title">
+            <span class="section-icon">🎯</span>
+            İşlemler
+          </div>
+          <div class="action-buttons">
+            <button class="btn btn-primary" id="saveBtn">
+              💾 Ayarları Kaydet
+            </button>
+            <button class="btn btn-secondary" id="testPrintBtn">
+              🖨️ Test Yazdır
+            </button>
+            <button class="btn btn-danger" id="logoutBtn">🚪 Çıkış Yap</button>
+          </div>
+        </div>
+
+        <!-- Software Update -->
+        <div class="section">
+          <div class="section-title">
+            <span class="section-icon">🔄</span>
+            Yazılım Güncellemesi
+          </div>
+          <div class="form-group">
+            <div style="display: flex; align-items: center; justify-content: space-between">
+              <div>
+                <div style="font-size: 14px; color: #333; font-weight: 500" id="updateVersionLabel">
+                  Güncel sürüm
+                </div>
+                <div style="font-size: 12px; color: #666; margin-top: 4px" id="updateStatusText">
+                  Güncelleme kontrolü yapılmadı
+                </div>
+              </div>
+              <button class="btn btn-primary" id="checkUpdateBtn" style="padding: 8px 18px; font-size: 13px">
+                🔍 Güncelleme Kontrol Et
+              </button>
+            </div>
+            <div id="updateProgressSection" style="display: none; margin-top: 15px">
+              <div style="font-size: 13px; color: #555; margin-bottom: 6px" id="updateProgressText">İndiriliyor...</div>
+              <div style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden">
+                <div id="settingsUpdateProgressBar" style="height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; transition: width 0.3s ease; width: 0%"></div>
+              </div>
+            </div>
+            <div id="updateInstallSection" style="display: none; margin-top: 15px">
+              <button class="btn btn-primary" id="settingsInstallBtn">
+                🚀 Güncellemeyi Yükle ve Yeniden Başlat
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Software Update -->
+        <div class="section">
+          <div class="section-title">
+            <span class="section-icon">🔄</span>
+            Yazılım Güncellemesi
+          </div>
+          <div class="form-group">
+            <div style="display: flex; align-items: center; justify-content: space-between">
+              <div>
+                <div style="font-size: 14px; color: #333; font-weight: 500" id="updateVersionLabel">
+                  Güncel sürüm
+                </div>
+                <div style="font-size: 12px; color: #666; margin-top: 4px" id="updateStatusText">
+                  Güncelleme kontrolü yapılmadı
+                </div>
+              </div>
+              <button class="btn btn-primary" id="checkUpdateBtn" style="padding: 8px 18px; font-size: 13px">
+                🔍 Güncelleme Kontrol Et
+              </button>
+            </div>
+            <div id="updateProgressSection" style="display: none; margin-top: 15px">
+              <div style="font-size: 13px; color: #555; margin-bottom: 6px" id="updateProgressText">İndiriliyor...</div>
+              <div style="width: 100%; height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden">
+                <div id="settingsUpdateProgressBar" style="height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 4px; transition: width 0.3s ease; width: 0%"></div>
+              </div>
+            </div>
+            <div id="updateInstallSection" style="display: none; margin-top: 15px">
+              <button class="btn btn-primary" id="settingsInstallBtn">
+                🚀 Güncellemeyi Yükle ve Yeniden Başlat
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </body>
+</html>
