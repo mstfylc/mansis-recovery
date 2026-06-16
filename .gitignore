@@ -1,0 +1,33 @@
+# Secrets and local environment
+.env
+.env.*
+*.pem
+*.key
+*.p8
+*.p12
+*.json
+!*example*.json
+
+# Backups and dumps
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.bak
+*.dump
+*.sql
+*.sqlite
+*.db
+
+# Binaries/installers
+*.exe
+*.dmg
+*.pkg
+*.msi
+
+# Local noise
+.DS_Store
+Thumbs.db
+node_modules/
+dist/
+build/

@@ -1,0 +1,177 @@
+MANSIS SIBER SALDIRI ONLEMLERI RAPORU
+Tarih: 2026-06-15
+
+KAPSAM
+Bu rapor, SSH uzerinden servis durdurma olaylarindan sonra daha genis siber saldiri yuzeyine karsi alinan ek onlemleri kaydeder. Odak alanlari:
+- API abuse / rate-limit
+- Nginx guvenlik basliklari
+- Hassas path engelleme
+- Brute-force engelleme
+- Docker published port yuzeyi
+- Mobil/POS web ve socket servis riski
+- Kalici servis/watchdog ve firewall
+
+ALINAN EK ONLEMLER
+
+1. Fail2ban kuruldu ve aktif edildi
+
+Backend ve frontend sunucularinda fail2ban kuruldu.
+Aktif jail'ler:
+- sshd
+- nginx-http-auth
+- nginx-botsearch
+- nginx-limit-req
+
+Frontend sunucuda kurulum sonrasi bir IP otomatik banlandi:
+- 165.154.227.158
+
+2. Nginx rate-limit ve connection-limit eklendi
+
+Iki sunucuda /etc/nginx/conf.d/mansis_security.conf olusturuldu.
+
+Backend:
+- mansis_api: 15 request/saniye/IP
+- mansis_web: 30 request/saniye/IP
+- connection limit zone: mansis_addr
+- client body timeout/header timeout/send timeout dusuruldu
+- server_tokens off
+
+Frontend:
+- mansis_web: 30 request/saniye/IP
+- connection limit zone: mansis_addr
+- client_max_body_size 10M
+- timeoutlar kisaltildi
+- server_tokens off
+
+3. Nginx security header'lari eklendi
+
+Public cevaplarda gorulen header'lar:
+- X-Frame-Options: SAMEORIGIN
+- X-Content-Type-Options: nosniff
+- Referrer-Policy: strict-origin-when-cross-origin
+- Strict-Transport-Security: max-age=31536000; includeSubDomains
+
+4. Eski TLS protokolleri kapatildi
+
+/etc/nginx/nginx.conf icinde:
+- TLSv1 ve TLSv1.1 kaldirildi.
+- TLSv1.2 ve TLSv1.3 birakildi.
+
+5. Hassas path engelleme eklendi
+
+Iki sunucuda /etc/nginx/snippets/mansis_deny_sensitive.conf olusturuldu.
+
+Engellenen ornekler:
+- /.env
+- /.git/*
+- /.svn/*
+- composer.json / composer.lock
+- package.json / package-lock.json
+- yarn.lock / pnpm-lock.yaml
+- Dockerfile / docker-compose*
+- *.map source map dosyalari
+- /wp-admin, /wp-login.php, /xmlrpc.php, /phpmyadmin, /pma, /cgi-bin
+
+Dogrlama:
+- https://admin.mansis.com.tr/.env -> 404
+- https://pos.mansis.com.tr/.git/config -> 404
+- https://backend.mansis.com.tr/.env -> 404
+
+6. Docker published portlari kalici olarak localhost bind'e alindi
+
+Compose dosyalari guncellendi. Sonraki recreate/up islemlerinde portlar public IP yerine 127.0.0.1'e bind edilecek.
+
+Backend compose:
+- 127.0.0.1:3001:3001
+- 127.0.0.1:5432:5432
+- 127.0.0.1:6379:6379
+- 127.0.0.1:9000:9000
+- 127.0.0.1:9001:9001
+- 127.0.0.1:3100:3100
+- 127.0.0.1:4000:3000
+
+Frontend compose:
+- admin: 127.0.0.1:3000:80
+- mobile/POS web: 127.0.0.1:8082:80
+
+7. Docker-USER firewall kurallari korundu ve genisletildi
+
+Docker publish trafiği INPUT zincirini asabildigi icin DOCKER-USER zincirinde conntrack --ctorigdstport kurallari kullanildi.
+
+Backend disaridan kapali:
+- 3001, 3005, 3100, 4000, 5432, 6379, 9000, 9001
+
+Frontend disaridan kapali:
+- 3000, 8082
+
+8. 3005 Socket.IO servisi disaridan kapatildi
+
+Backend'te /root/socket/index.js su sekilde calisiyor:
+- Express + Socket.IO
+- CORS origin: *
+- POST /qr-scanned endpoint'i auth olmadan userId odasina close-qr emit ediyor.
+
+Bu endpoint public acik kalirsa QR/checkout akisi manipule edilebilir. Bu nedenle:
+- INPUT zincirinde 3005 icin sadece 127.0.0.1 allow, kalan drop.
+- DOCKER-USER zincirinde public 3005 drop.
+
+Not: Mobil uygulama dogrudan IP:3005 kullaniyorsa real-time QR akisi etkilenebilir. Guvenli mimari, bu servisi HTTPS/nginx arkasina almak ve auth/shared secret/JWT kontrolu eklemektir.
+
+9. Watchdog ve firewall kaliciligi dogrulandi
+
+Iki sunucuda aktif:
+- fail2ban: active
+- mansis-ensure-services.timer: active
+- mansis-firewall-hardening.service: active
+
+10. Servis dogrulama
+
+Son public kontroller:
+- https://backend.mansis.com.tr/application-version -> 200 OK
+- https://admin.mansis.com.tr -> 200 OK
+- https://pos.mansis.com.tr -> 200 OK
+
+KALAN ONEMLI ISLER
+
+1. DigitalOcean Cloud Firewall sart
+Sunucu ici firewall uygulandi, ama DO Cloud Firewall ile 22 sadece guvenilir IP'lere acilmali. 80/443 public kalmali. Tum ic portlar cloud seviyesinde kapali olmali.
+
+2. Secret rotation
+Backend .env icinde kritik secret'lar var:
+- JWT access/refresh secret
+- PostgreSQL password
+- Redis varsa auth yok gibi gorunuyor
+- MinIO root password
+- SMTP password
+- NetGSM credential
+- PayTR merchant key/salt
+- Firebase service account
+- Grafana admin password
+
+Bu secret'lar rotate edilmeli. Kod/Git erisimi olmadigi icin dikkatli planlanmali.
+
+3. GitHub/GHCR ve mobil app erisimi
+Eski deploy key ve tokenlar repo/GHCR tarafindan da revoke edilmeli. Mobil uygulama build/config tarafinda eski backend/socket endpointleri varsa yeni guvenli endpoint planlanmali.
+
+4. 3005 socket servisi icin kalici guvenli mimari
+Mevcut kod authsiz. Guvenli hale getirmek icin:
+- JWT veya imzali shared secret zorunlu olmali.
+- CORS origin daraltilmali.
+- Nginx HTTPS altina alinmali.
+- /qr-scanned sadece backend/admin tarafindan cagrilabilmeli.
+
+5. Auditd / merkezi log
+Bir sonraki asamada auditd ile su olaylar izlenmeli:
+- /root/.ssh/authorized_keys degisikligi
+- docker stop/down/compose islemleri
+- /etc/nginx ve /root/mansis-* degisiklikleri
+- systemctl stop/restart docker/nginx/ssh
+
+6. Yeni sunucuya gecis
+Mevcut sunucu stabilize edildi ama nihai temiz cozum:
+- Yeni droplet
+- Yeni SSH key seti
+- Ayrik admin kullanicisi
+- Root login kapali
+- Yedekten restore
+- DNS cutover

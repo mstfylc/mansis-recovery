@@ -1,0 +1,160 @@
+MANSIS MANUEL DURDURMA KANIT RAPORU
+Olusturma tarihi: 2026-06-15
+Hazirlayan: Codex olay inceleme notlari
+
+KISA SONUC
+Bu rapordaki teknik kanitlar, 2026-06-14 gecesi Mansis backend ve frontend Docker konteynerlerinin crash, reboot veya DigitalOcean genel kesintisi nedeniyle degil, Docker tarafinda manuel stop/down benzeri bir islemle durduruldugunu kuvvetle gosterir.
+
+Kesin "sabotaj" veya "kisi X yapti" demek icin DigitalOcean Activity Log, shell history, auditd varsa audit loglari ve SSH anahtari sahipligi organizasyon tarafindan teyit edilmelidir. Ancak elimizdeki SSH ve Docker loglari su kisi/anahtar etrafinda guclu bir korelasyon gosteriyor:
+
+- Kaynak IP: 62.248.106.189
+- SSH key fingerprint: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+- authorized_keys yorumu: bsekerci@altayer.com
+- Bu fingerprint hem backend hem frontend sunucuda authorized_keys icinde mevcut gorundu.
+- Ayni fingerprint ile backend ve frontend sunuculara basarili root girisleri, konteynerlerin manuel durduruldugu dakikalarla cakisti.
+
+ZAMAN CIZELGESI (UTC)
+- 2026-06-14 23:40:47 - 23:53:42: backend sunucuya 62.248.106.189 IP'sinden RSA SHA256:7nj0Nv6... fingerprint'i ile cok sayida basarili root SSH girisi.
+- 2026-06-14 23:45:25 - 23:53:43: frontend sunucuya 62.248.106.189 IP'sinden ayni RSA SHA256:7nj0Nv6... fingerprint'i ile basarili root SSH girisleri.
+- 2026-06-14 23:46:04: backend app konteyneri durdu; Docker logu hasBeenManuallyStopped=true dedi.
+- 2026-06-14 23:50:19 - 23:50:21: backend Postgres/Redis/MinIO ve diger konteynerler durdu; Docker loglari hasBeenManuallyStopped=true dedi.
+- 2026-06-14 23:50:20: frontend/admin ve mobile-web konteynerleri durdu; Docker loglari hasBeenManuallyStopped=true dedi.
+- 2026-06-15 00:04 ve sonrasi: kurtarma/inceleme icin bizim ve sizin tarafinizdan yeni girisler basladi. Bu saat, durdurma olayindan sonradir.
+
+DOGRU YORUM
+Docker logundaki su alanlar kritik:
+- hasBeenManuallyStopped=true
+- daemonShuttingDown=false
+- error="restart canceled"
+- exitStatus="{0 ...}" olan konteynerler
+
+Bu kombinasyon, daemon kapanisi ya da otomatik crash/restart dongusunden ziyade Docker API uzerinden stop/down islemi yapildigini gosterir. Yani sistem kendiliginden "restart edemedi" degil; Docker, "bu konteyner manuel durduruldu, restart policy uygulama" demis.
+
+BACKEND DOCKER KANITLARI
+Sunucu: mansis-backend / 167.71.61.133
+
+Log alintilari:
+
+Jun 14 23:46:04 mansis-backend dockerd[881]: time="2026-06-14T23:46:04.663354248Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=4f601165d539912723cd5bdb80f210fea423aa842a46f210c58cc8495b35cea5 daemonShuttingDown=false error="restart canceled" execDuration=492h27m41.726764956s exitStatus="{1 2026-06-14 23:46:04.505249536 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+Jun 14 23:50:19 mansis-backend dockerd[881]: time="2026-06-14T23:50:19.885598016Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=7805f07e6e7545090baee0bfe7794120106f4364eb0046ef47c2dc4e2e0fd9d0 daemonShuttingDown=false error="restart canceled" execDuration=492h31m56.909378531s exitStatus="{0 2026-06-14 23:50:19.583478127 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+Jun 14 23:50:19 mansis-backend dockerd[881]: time="2026-06-14T23:50:19.888197848Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=9dd4d87ea152b372838922ecec4464048b21050e12cd569f93409ea687175de9 daemonShuttingDown=false error="restart canceled" execDuration=492h31m56.967528986s exitStatus="{0 2026-06-14 23:50:19.551436713 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+Jun 14 23:50:19 mansis-backend dockerd[881]: time="2026-06-14T23:50:19.917651006Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=5a0b92403114f17c3478f52ba1402213d32ef5d1b9accfc092a7e2508b60d21d daemonShuttingDown=false error="restart canceled" execDuration=492h31m57.065986369s exitStatus="{0 2026-06-14 23:50:19.62341818 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+FRONTEND DOCKER KANITLARI
+Sunucu: mansis-admin / 157.230.121.60
+
+Log alintilari:
+
+Jun 14 23:50:20 mansis-admin dockerd[869]: time="2026-06-14T23:50:20.014280104Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=f27bf1798f868bbcf8eb51d93106aaeca429085c11db594ded63823e87ba926d daemonShuttingDown=false error="restart canceled" execDuration=492h31m40.750125981s exitStatus="{0 2026-06-14 23:50:19.919275306 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+Jun 14 23:50:20 mansis-admin dockerd[869]: time="2026-06-14T23:50:20.413652772Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=4d6832bd822a5609c01e3c36dd28eec1f318e1eceee7664b535e58dc0f52c0fc daemonShuttingDown=false error="restart canceled" execDuration=492h31m41.140382487s exitStatus="{0 2026-06-14 23:50:20.365268842 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+SSH KANITLARI - OLAY ANINDA BASARILI GIRISLER
+
+Backend basarili SSH girisleri:
+
+2026-06-14T23:40:47.343127+00:00 mansis-backend sshd[1733265]: Accepted publickey for root from 62.248.106.189 port 4235 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-14T23:45:25.052583+00:00 mansis-backend sshd[1735918]: Accepted publickey for root from 62.248.106.189 port 4607 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-14T23:46:03.629234+00:00 mansis-backend sshd[1736411]: Accepted publickey for root from 62.248.106.189 port 4645 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-14T23:50:18.746386+00:00 mansis-backend sshd[1738906]: Accepted publickey for root from 62.248.106.189 port 5072 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-14T23:53:42.032094+00:00 mansis-backend sshd[1740325]: Accepted publickey for root from 62.248.106.189 port 5432 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+
+Frontend basarili SSH girisleri:
+
+2026-06-14T23:45:25.088527+00:00 mansis-admin sshd[2423819]: Accepted publickey for root from 62.248.106.189 port 4609 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-14T23:49:25.701033+00:00 mansis-admin sshd[2424269]: Accepted publickey for root from 62.248.106.189 port 4986 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-14T23:50:05.130458+00:00 mansis-admin sshd[2424598]: Accepted publickey for root from 62.248.106.189 port 5043 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-14T23:50:18.735284+00:00 mansis-admin sshd[2424715]: Accepted publickey for root from 62.248.106.189 port 5071 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-14T23:53:43.096048+00:00 mansis-admin sshd[2425143]: Accepted publickey for root from 62.248.106.189 port 5434 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+
+AUTHORIZED_KEYS FINGERPRINT ESLESMESI
+
+Backend authorized_keys icinde gorulen ilgili fingerprint:
+4096 SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A bsekerci@altayer.com (RSA)
+4096 SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A bsekerci@altayer.com (RSA)
+
+Frontend authorized_keys icinde gorulen ilgili fingerprint:
+4096 SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A bsekerci@altayer.com (RSA)
+
+Onemli not: SSH public key comment alani tek basina kimlik kaniti degildir; kullanici tarafindan yazilabilir. Ancak logdaki fingerprint ile authorized_keys fingerprint'i aynidir. Bu nedenle "bsekerci@altayer.com yorumu tasiyan RSA anahtari kullanildi" demek teknik olarak dogrudur.
+
+BIZIM/KURTARMA GIRISLERINDEN AYRIM
+
+Kurtarma sirasinda gorulen farkli fingerprint:
+- ED25519 SHA256:8VOkr8lq2ebPBlzHw34ECaM14HzpGjov1YwL14j9qic codex-temp-mansis
+
+Bu fingerprint ile 2026-06-15 00:05 ve sonrasinda girisler goruluyor. Docker manuel durdurma olaylari ise 2026-06-14 23:46 ve 23:50 civarinda gerceklesti. Yani durdurma olaylari, bizim kurtarma/inceleme islemlerimizden once meydana geldi.
+
+MEVCUT HAM KANIT DOSYALARI
+
+Yerel yedek paketi:
+C:\Users\musta\Documents\Codex\2026-06-15\502-bad-gateway-nginx-1-24\outputs\disaster-backups-20260615T003053Z
+
+Ilgili dosyalar:
+- backend\docker-journal-incident.txt
+- backend\auth-ssh-summary.txt
+- backend\last-logins.txt
+- frontend\docker-journal-incident.txt
+- frontend\auth-ssh-summary.txt
+- frontend\last-logins.txt
+- backend\SHA256SUMS.txt
+- frontend\SHA256SUMS.txt
+
+Sunuculardaki yedek konumlari:
+- backend: /root/disaster-backups/20260615T003053Z
+- frontend: /root/disaster-backups/20260615T003053Z
+
+SONRAKI KANIT TAMAMLAMA ADIMLARI
+
+2026-06-15 00:55 UTC GUNCEL KRITIK EK
+
+Ilk rapordan sonra ayni RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A fingerprint'i, 62.248.106.189 IP'sinden tekrar iki sunucuya basarili root SSH girisi yapti. Bu girislerin hemen ardindan iki sunucuda da Docker konteynerleri yeniden manuel durduruldu.
+
+Backend yeni giris ve stop kanitlari:
+
+2026-06-15T00:55:17.700798+00:00 mansis-backend sshd[1765173]: Accepted publickey for root from 62.248.106.189 port 3654 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-15T00:55:40.275120+00:00 mansis-backend sshd[1765447]: Accepted publickey for root from 62.248.106.189 port 3667 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+
+Jun 15 00:55:41 mansis-backend dockerd[881]: time="2026-06-15T00:55:41.265904305Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=9dd4d87ea152b372838922ecec4464048b21050e12cd569f93409ea687175de9 daemonShuttingDown=false error="restart canceled" execDuration=41m51.98601067s exitStatus="{0 2026-06-15 00:55:40.958993539 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+Jun 15 00:55:41 mansis-backend dockerd[881]: time="2026-06-15T00:55:41.266123051Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=4f601165d539912723cd5bdb80f210fea423aa842a46f210c58cc8495b35cea5 daemonShuttingDown=false error="restart canceled" execDuration=41m46.090128726s exitStatus="{1 2026-06-15 00:55:41.068776174 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+Frontend yeni giris ve stop kanitlari:
+
+2026-06-15T00:55:17.785450+00:00 mansis-admin sshd[2430964]: Accepted publickey for root from 62.248.106.189 port 3655 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+2026-06-15T00:55:40.288362+00:00 mansis-admin sshd[2431073]: Accepted publickey for root from 62.248.106.189 port 3668 ssh2: RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+
+Jun 15 00:55:41 mansis-admin dockerd[869]: time="2026-06-15T00:55:41.080396682Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=f27bf1798f868bbcf8eb51d93106aaeca429085c11db594ded63823e87ba926d daemonShuttingDown=false error="restart canceled" execDuration=31m38.592148107s exitStatus="{0 2026-06-15 00:55:41.031183376 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+Jun 15 00:55:41 mansis-admin dockerd[869]: time="2026-06-15T00:55:41.645895951Z" level=warning msg="ShouldRestart failed, container will not be restarted" container=4d6832bd822a5609c01e3c36dd28eec1f318e1eceee7664b535e58dc0f52c0fc daemonShuttingDown=false error="restart canceled" execDuration=31m38.578388407s exitStatus="{0 2026-06-15 00:55:41.600528013 +0000 UTC}" hasBeenManuallyStopped=true restartCount=0
+
+Alinan acil aksiyonlar:
+- 2026-06-15 00:56 UTC civarinda bsekerci@altayer.com, b21990982@cs.hacettepe.edu.tr ve your_email/your-email yorumlu root authorized_keys satirlari kaldirildi.
+- Eski /root/.ssh/id_rsa ve /root/.ssh/id_rsa.pub dosyalari silinmeden karantinaya tasindi.
+- Karantina konumlari:
+  - backend: /root/security-backups/20260615T005651Z
+  - frontend: /root/security-backups/20260615T005651Z
+- 62.248.106.189 IP'si iki sunucuda iptables INPUT DROP ile bloklandi.
+- Blok ve key temizligi sonrasinda ayni IP icin loglar "Accepted publickey" yerine "Connection closed by authenticating user root ... [preauth]" seviyesine dustu.
+- Backend, admin ve POS servisleri yeniden ayaga kaldirildi ve 2026-06-15 00:59 UTC civarinda uc domain de HTTP 200 dondu.
+
+1. DigitalOcean Activity Log kontrol edilmeli:
+   - Snapshot, power off, console access, firewall, droplet action, API token activity var mi?
+
+2. 62.248.106.189 IP'si icin kurum/ag/ISP eslestirmesi yapilmali.
+
+3. RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A anahtarinin sahibi organizasyon icinde teyit edilmeli.
+
+4. Root shell history ve varsa audit loglari ayrica korunmali:
+   - /root/.bash_history
+   - /var/log/auth.log*
+   - journalctl exportlari
+   - Docker event/journal loglari
+
+5. Acil guvenlik onlemi:
+   - Artik kullanilmamasi gereken SSH public keyler authorized_keys'ten kaldirilmali.
+   - Root SSH dogrudan kapatilmali veya en azindan sadece bilinen IP'lerden erisime izin verilmeli.
+   - Yeni sunucu kurulumunda her kisi icin ayri kullanici + ayri SSH key + sudo audit trail kullanilmali.

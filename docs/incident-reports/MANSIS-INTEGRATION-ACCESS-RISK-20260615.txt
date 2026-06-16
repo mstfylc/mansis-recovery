@@ -1,0 +1,159 @@
+MANSIS PRISMA / ENTEGRASYON ERISIM RISKI RAPORU
+Tarih: 2026-06-15
+
+KISA CEVAP
+Evet, Prisma veya entegrasyon sirlarina sahip biri sisteme erisebilir veya zarar verebilir.
+
+Prisma tek basina disaridan acik bir servis degildir; ancak DATABASE_URL / PostgreSQL parolasi ele gecerse Prisma Studio, psql, custom script veya uygulama kodu uzerinden veritabanina dogrudan erisim saglanabilir. Bu nedenle asil risk Prisma degil, Prisma'nin kullandigi DB credential'idir.
+
+BULGULAR
+
+1. Backend .env cok kritik secret tasiyor
+
+/root/mansis-backend/.env icinde degerleri gormeden tespit edilen kritik anahtar siniflari:
+- DATABASE_URL
+- POSTGRES_USER / POSTGRES_PASSWORD / POSTGRES_DB
+- JWT_ACCESS_SECRET / JWT_REFRESH_SECRET
+- MINIO_ROOT_USER / MINIO_ROOT_PASSWORD
+- SMTP_USER / SMTP_PASSWORD
+- NETGSM_USERCODE / NETGSM_PASSWORD
+- MERCHANT_ID / MERCHANT_KEY / MERCHANT_SALT
+- ADISYO_API_URL ve ilgili config
+- GF_SECURITY_ADMIN_USER / GF_SECURITY_ADMIN_PASSWORD
+- FIREBASE_SERVICE_ACCOUNT_JSON
+- FIREBASE_SA_POSANTO
+- FIREBASE_SA_UYANIK
+
+Risk:
+- DB okuma/yazma/silme
+- Admin oturum token uretme veya mevcut JWT'leri dogrulama/sahte token riski
+- MinIO dosya okuma/silme
+- SMS gonderimi/kota/masraf riski
+- SMTP ile mail gonderimi
+- PayTR/odeme akisi manipülasyonu veya credential kullanimi
+- Firebase project/service account uzerinden bildirim veya servis islemleri
+- Grafana erisimi
+
+2. GHCR/Docker registry auth iki sunucuda vardi
+
+Dosyalar:
+- backend: /root/.docker/config.json
+- frontend: /root/.docker/config.json
+
+Bu dosyalarda ghcr.io auth kaydi vardi. Mevcut container'lar calismaya devam eder, ancak bu token ele gecerse GHCR image pull yetkisi veya kapsam genis ise farkli repo/package erisimi verebilir.
+
+Alinan aksiyon:
+- Iki sunucuda /root/.docker/config.json auth bilgileri temizlendi.
+- Eski dosyalar karantinaya alindi:
+  - backend: /root/security-backups/20260615T011752Z-integrations/docker-config.json.before-ghcr-quarantine
+  - frontend: /root/security-backups/20260615T011752Z-integrations/docker-config.json.before-ghcr-quarantine
+
+Not:
+- Yeni image pull/deploy gerekirse yeni GHCR token gerekir.
+- Eski GHCR token GitHub tarafindan revoke edilmelidir.
+
+3. PostgreSQL dis portu kapali, ama credential rotate edilmeli
+
+Disaridan port testi:
+- 5432 public kapali gorundu.
+- 6379 public kapali gorundu.
+
+Ancak backend container ve sunucu icinden DB erisimi devam ediyor. DATABASE_URL veya POSTGRES_PASSWORD ele gecmisse saldirgan ayni credential'i baska bir yol buldugunda kullanabilir.
+
+Postgres rollerinde sadece login superuser olarak postgres gorundu.
+
+Oneri:
+- Yeni DB kullanicisi/parolasi uretilmeli.
+- DATABASE_URL ve POSTGRES_PASSWORD rotate edilmeli.
+- Mümkünse uygulama superuser postgres yerine minimum yetkili uygulama kullanicisi ile calismali.
+
+4. Redis parola yok
+
+Redis CONFIG GET requirepass sonucu bos gorundu.
+Dis port kapali oldugu icin acil public risk azaldi, ama host/container ici erisim elde eden biri Redis'i sifresiz kullanabilir.
+
+Oneri:
+- Redis requirepass veya Docker network izolasyonu eklenmeli.
+- Uygulama config'i buna gore guncellenmeli.
+
+5. Frontend/admin/mobile env
+
+Frontend sunucuda tespit edilen env dosyalari:
+- /root/mansis-admin/.env.production
+- /root/mansis-mobile-web/.env.production
+- /root/mansis-mobile-web/.env.production.save*
+
+Admin env icinde:
+- VITE_BACKEND_URL
+- VITE_SENTRY_DSN
+- VITE_SENTRY_AUTH_TOKEN
+- Firebase public config alanlari
+
+Risk:
+- VITE_* degiskenleri build ile public tarafa gomebilir. Firebase API key public olabilir, ama Firebase security rules zayifsa risk olusturur.
+- SENTRY_AUTH_TOKEN public build'e girdiyse ciddi risk; Sentry proje/org islemleri yapilabilir. Bu token rotate edilmeli ve frontend build'e sokulmamali.
+
+6. Firebase service account
+
+Backend .env icinde FIREBASE_SERVICE_ACCOUNT_JSON ve FIREBASE_SA_* alanlari var.
+
+Risk:
+- Service account ele gecerse Firebase Admin yetkileriyle islem yapilabilir.
+
+Oneri:
+- Google Cloud/Firebase IAM'de eski service account key'leri revoke edilmeli.
+- Yeni key uretilmeli.
+- En az yetki prensibi uygulanmali.
+
+7. PayTR / SMS / SMTP / Adisyo entegrasyonlari
+
+Backend .env icindeki credential siniflari rotate edilmeli:
+- PayTR Merchant key/salt
+- NetGSM password
+- SMTP password
+- Adisyo credentials/API keys varsa
+
+Bu sirlar ele gecerse para/itibar/operasyon riski olusur.
+
+ALINAN ONLEMLER
+
+- GHCR/Docker auth iki sunucudan temizlendi.
+- Docker ic portlari public erisimden kapali.
+- Nginx hassas dosya path'lerini engelliyor.
+- Fail2ban aktif.
+- SSH anahtarlari temizlendi.
+- Watchdog ve firewall kalici servisleri aktif.
+
+ACIL ROTATION SIRASI
+
+1. GitHub/GHCR token
+   - Eski token revoke.
+   - Yeni minimum scope token.
+
+2. PostgreSQL / DATABASE_URL
+   - Yeni app DB kullanicisi.
+   - Eski postgres parolasi degistirme.
+   - .env guncelleme ve backend restart.
+
+3. JWT secrets
+   - Access/refresh secret rotate.
+   - Tum kullanicilarin refreshToken alanlari sifirlanabilir.
+   - Bu islem herkesi yeniden login olmaya zorlar.
+
+4. Firebase service account keys
+   - Eski keys revoke.
+   - Yeni key minimum yetkiyle eklenmeli.
+
+5. Sentry auth token
+   - Eski token revoke.
+   - Frontend VITE_SENTRY_AUTH_TOKEN kullanimi kaldirilmali.
+
+6. PayTR, NetGSM, SMTP, Adisyo
+   - Panel/API tarafindan rotate edilmeli.
+
+7. MinIO root password
+   - Yeni user/policy ile app access key kullanilmali.
+   - Root credential app .env'den cikarilmali.
+
+ONEMLI NOT
+Kod/Git erisimi olmadan tum secret rotation islemlerini kontrollu yapmak gerekir. Yanlis sirada rotate edilirse uygulama calismayi durdurabilir. Bu nedenle once yeni secret'lar olusturulup .env guncellenmeli, sonra container restart ve saglik kontrolu yapilmalidir.

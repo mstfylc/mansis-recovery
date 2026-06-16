@@ -1,0 +1,32 @@
+MANSIS ADMIN KULLANICI DEGISIKLIK KAYDI
+Tarih: 2026-06-15 01:20 UTC
+
+Yapilan islemler:
+
+1. sirket@mansis.com.tr
+- companyId: 1
+- Onceki rol: COMPANY_ADMIN
+- Yeni durum: PASSIVE
+- refreshToken sifirlandi.
+- password reset alanlari sifirlandi.
+
+2. mrtemen@gmail.com
+- companyId: 1
+- Onceki rol: COMPANY_ADMIN
+- Yeni rol: BRANCH_ADMIN
+- Durum: ACTIVE
+- refreshToken sifirlandi.
+
+3. mustafa.yalcin@yandex.com
+- companyId: 1
+- Rol: COMPANY_ADMIN olarak kaldi.
+- Durum: ACTIVE olarak kaldi.
+- Sifre degistirildi.
+- refreshToken sifirlandi.
+- password reset alanlari sifirlandi.
+
+Yedek:
+- Degisiklik oncesi 3 kullanici satiri DB icindeki SecurityUserBackup tablosuna eklendi.
+
+Not:
+- Yeni sifre guvenlik nedeniyle bu rapora yazilmadi.

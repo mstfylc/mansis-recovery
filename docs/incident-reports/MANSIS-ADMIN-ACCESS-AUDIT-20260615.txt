@@ -1,0 +1,65 @@
+MANSIS ADMIN ERISIM DENETIMI
+Tarih: 2026-06-15
+
+YAPILAN ISLEM
+- SUPER_ADMIN hesabinin sifresi degistirildi.
+- Hesap: admin@mansis.com.tr
+- DB id: 1
+- Role: SUPER_ADMIN
+- Status: ACTIVE
+- refreshToken sifirlandi.
+- passwordResetToken ve passwordResetExpires sifirlandi.
+- Eski satir yedegi DB icinde SecurityUserBackup tablosuna alindi.
+
+Not: Yeni sifre bu rapora yazilmadi ve Drive'a yuklenmedi.
+
+MUSTAFA DISINDA AKTIF YONETICI ROLU OLAN HESAPLAR
+
+Ozet:
+- COMPANY_ADMIN: 3
+- BRANCH_ADMIN: 23
+- SUPER_ADMIN: 1
+- Toplam: 27
+
+Referans disi tutulan hesap:
+- mustafa.yalcin@yandex.com / COMPANY_ADMIN
+
+SUPER_ADMIN
+- admin@mansis.com.tr / companyId: null / company: null
+
+COMPANY_ADMIN
+- mrtemen@gmail.com / companyId: 1 / Uyanik Kutuphane
+- sirket@mansis.com.tr / companyId: 1 / Uyanik Kutuphane
+- Taffeecoffee.co@outlook.com / companyId: 3 / Taffee Coffee
+
+BRANCH_ADMIN
+- adminoski@hotmail.com / companyId: 1 / Uyanik Kutuphane / branches: Canakkale-Cevatpasa, Kocaeli-Izmit, Kocaeli-Yahyakaptan, TEST SUBE, tttessts2
+- ali_cirpanli@hotmail.com / companyId: 1 / Uyanik Kutuphane / branches: Ankara-Yasamkent
+- arfdemr01@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Izmir-Bornova
+- aytepmelihtaha@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Elazig-Cumhuriyet
+- cemkilic67@icloud.com / companyId: 1 / Uyanik Kutuphane / branches: Karabuk-Safranbolu
+- dilekemen@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Kocaeli-Izmit
+- e.gorgulu44@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Malatya - Yesilyurt
+- ersinalparslan@hotmail.com / companyId: 1 / Uyanik Kutuphane / branches: Ankara - Ovecler
+- f.betulhacimusalar@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Eskisehir-Gulluk
+- gzgln@hotmail.com / companyId: 1 / Uyanik Kutuphane / branches: Karabuk-Safranbolu
+- hy@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Ankara-Bahcelievler
+- irem_baskurt@hotmail.com / companyId: 1 / Uyanik Kutuphane / branches: Canakkale-Cevatpasa
+- kizilayadmin@hotmail.com / companyId: 1 / Uyanik Kutuphane / branches: Kizilay
+- oacatal@hotmail.com / companyId: 1 / Uyanik Kutuphane / branches: Kocaeli-Izmit, Kocaeli-Yahyakaptan
+- ozzymen_ozzymen@hotmail.com / companyId: 1 / Uyanik Kutuphane / branches: none listed
+- testa@mansis.com.tr / companyId: 1 / Uyanik Kutuphane / branches: Karabuk-Safranbolu, Kocaeli-Yahyakaptan, TEST SUBE, tttessts2
+- uaeege@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Antalya-Caybasi
+- uyanikkutuphaneovecler@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Ankara - Ovecler
+- yesiltarlafatih23@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Elazig-Cumhuriyet
+- yusuf.27420@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Malatya - Yesilyurt
+- yusuf604.ya@gmail.com / companyId: 1 / Uyanik Kutuphane / branches: Malatya - Yesilyurt
+- Taffeecoffee.co2@outlook.com / companyId: 3 / Taffee Coffee / branches: TAFFEE CO Karayollari
+- demo-staff@gmail.com / companyId: 4 / Posanto / branches: Posanto Ankara Sube
+
+ONERILEN SONRAKI AKSIYON
+1. Bu listedeki hesaplar tek tek is sahibiyle dogrulanmali.
+2. Supheli veya artik kullanilmayan hesaplar PASSIVE yapilmali veya role CUSTOMER/EMPLOYEE seviyesine cekilmeli.
+3. Tum admin rollerinin refreshToken alanlari sifirlanarak zorunlu yeniden giris uygulanabilir.
+4. Kritik olarak gorulen COMPANY_ADMIN hesaplarinin sifreleri rotate edilmeli.
+5. Admin panelinde mumkunse 2FA ve IP allowlist uygulanmali.

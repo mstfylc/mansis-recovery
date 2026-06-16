@@ -1,0 +1,161 @@
+MANSIS ACIL GUVENLIK SIKILASTIRMA RAPORU
+Tarih: 2026-06-15
+Saat araligi: 00:55-01:05 UTC
+
+OZET
+Sisteme 2026-06-15 00:55 UTC civarinda 62.248.106.189 IP adresinden, daha once tespit edilen RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A anahtariyla tekrar giris yapildi ve backend/frontend Docker servisleri yeniden manuel durduruldu.
+
+Bu nedenle sistem "anahtar sildik, bitti" seviyesinden cikartilip aktif karsi-mudahale varsayimiyla sikilastirildi.
+
+YAPILAN ISLEMLER
+
+1. SSH authorized_keys temizligi
+
+Backend sunucu:
+- Kalan izinli anahtarlar:
+  - SHA256:ITbej5siOobciWe/x38slz9qvB99j1o7CmIOCvwxiFc codex-mansis-secure-20260615
+  - SHA256:/Q5JoS/r71cZJIO0YgmkSIS67smv7AW6SIECHDBF18E musta@musti
+
+Frontend sunucu:
+- Kalan izinli anahtarlar:
+  - SHA256:ITbej5siOobciWe/x38slz9qvB99j1o7CmIOCvwxiFc codex-mansis-secure-20260615
+
+Kaldirilan root SSH yetkileri:
+- bsekerci@altayer.com / RSA SHA256:7nj0Nv6+4Dbu+19QYzpbEBQb7IBmEeQ6tzZ4y8Uh37A
+- b21990982@cs.hacettepe.edu.tr deploy/legacy RSA anahtarlari
+- your_email@example.com / your-email@example.com deploy/legacy RSA anahtarlari
+- codex-temp-mansis eski gecici anahtari
+- batu@batu eski RSA anahtari
+- DigitalOcean dotty_ssh gecici anahtari
+
+2. Eski deploy private key karantinasi
+
+Silinmeden, kanit ve geri-donus ihtimali icin karantinaya tasindi:
+- Backend: /root/security-backups/20260615T005651Z/id_rsa.quarantined
+- Frontend: /root/security-backups/20260615T005651Z/id_rsa.quarantined
+
+Bu islem mevcut calisan Docker container'lari bozmaz. Ancak ileride Git pull/deploy gerekiyorsa Git repo tarafinda yeni deploy key uretilip yetkilendirilmelidir.
+
+3. SSH daemon sikilastirma
+
+Iki sunucuda /etc/ssh/sshd_config.d/99-mansis-hardening.conf olusturuldu:
+- PasswordAuthentication no
+- KbdInteractiveAuthentication no
+- ChallengeResponseAuthentication no
+- PermitEmptyPasswords no
+- PermitRootLogin prohibit-password
+- PubkeyAuthentication yes
+- X11Forwarding no
+- AllowTcpForwarding no
+- PermitTunnel no
+- MaxAuthTries 3
+- LoginGraceTime 20
+
+4. Aktif eski root oturumlari kapatildi
+
+Anahtar temizligi yeni girisi engeller ama daha once acilmis shell oturumlarini kapatmaz. Bu nedenle iki sunucuda acik eski pts/* root oturumlari kill edildi.
+
+5. Saldirgan IP bloklama
+
+Iki sunucuda 62.248.106.189 IP adresi bloklandi:
+- INPUT zinciri: DROP
+- DOCKER-USER zinciri: DROP
+
+Blok sonrasinda ayni IP icin loglar "Accepted publickey" yerine "Connection closed ... [preauth]" seviyesine dustu.
+
+6. Docker port yuzeyi kapatma
+
+Nginx 80/443 public kaldi. Docker'in dogrudan publish ettigi ic portlar dis dunyadan kapatildi.
+
+Backend dis erisime kapatilan host portlari:
+- 3001 backend app
+- 3100 Loki
+- 4000 Grafana
+- 5432 PostgreSQL
+- 6379 Redis
+- 9000 MinIO API
+- 9001 MinIO console
+
+Frontend dis erisime kapatilan host portlari:
+- 3000 admin container
+- 8082 POS/mobile web container
+
+Not: Docker published port trafikleri INPUT zincirini asabildigi icin DOCKER-USER zincirinde conntrack --ctorigdstport kurallari eklendi.
+
+7. Firewall kaliciligi
+
+Iki sunucuda eklendi:
+- /usr/local/sbin/mansis-firewall-hardening.sh
+- /etc/systemd/system/mansis-firewall-hardening.service
+
+Servis enabled ve active durumdadir. Reboot sonrasi firewall kurallarini tekrar uygular.
+
+8. Servis watchdog
+
+Container'lar yeniden manuel durdurulursa otomatik geri kalkmalari icin iki sunucuda systemd timer kuruldu:
+- /usr/local/sbin/mansis-ensure-services.sh
+- /etc/systemd/system/mansis-ensure-services.service
+- /etc/systemd/system/mansis-ensure-services.timer
+
+Timer her 60 saniyede bir calisir. Eksik/durmus container gorurse ilgili docker compose up -d komutunu calistirir.
+
+9. Servis dogrulama
+
+2026-06-15 01:02-01:04 UTC kontrolleri:
+- https://backend.mansis.com.tr/application-version -> HTTP 200
+- https://admin.mansis.com.tr -> HTTP 200
+- https://pos.mansis.com.tr -> HTTP 200
+
+10. Kalicilik ve arka kapi taramasi
+
+Kontrol edilen alanlar:
+- UID 0 kullanicilar: sadece root gorundu.
+- Cron dizinleri: standart cron dosyalari disinda supheli is gorulmedi.
+- Systemd timer listesi: standart sistem timerlari ve bizim mansis-ensure-services timer goruldu.
+- Docker daemon: TCP remote Docker API acik degil; dockerd fd:// unix socket ile calisiyor.
+- Supheli process hizli taramasi: reverse shell/miner/nc/socat benzeri bariz proses gorulmedi.
+
+KALAN KRITIK DIS AKSIYONLAR
+
+1. DigitalOcean Firewall
+Sunucu ici iptables iyi bir acil onlem, ancak DigitalOcean Cloud Firewall ile asagidaki kurallar kalici ve dis katmanda uygulanmali:
+- 80/tcp ve 443/tcp: public acik.
+- 22/tcp: sadece guvenilir IP adreslerinden acik.
+- Backend ic portlari 3001, 3100, 4000, 5432, 6379, 9000, 9001: public kapali.
+- Frontend ic portlari 3000, 8082: public kapali.
+- 62.248.106.189: tum trafik bloklu.
+
+2. DigitalOcean Activity Log
+DO panelinde su olaylar kontrol edilmeli:
+- Console access
+- Droplet power/rebuild/snapshot
+- SSH key inject
+- Firewall change
+- API token use
+- Team/user login
+
+3. Git/GHCR erisimi
+Git kod erisimi yoksa bile Docker image'lari GHCR'dan pull ediliyor:
+- ghcr.io/uyanik-app/uyanik-backend:latest
+- ghcr.io/uyanik-app/uyanik-admin:latest
+- ghcr.io/uyanik-app/uyanik-mobile-web:latest
+
+GitHub/GHCR tarafinda:
+- Eski deploy key'ler revoke edilmeli.
+- Eski PAT/GHCR token varsa rotate edilmeli.
+- bsekerci veya supheli hesaplar repo/org erisiminden kaldirilmali.
+
+4. Yeni sunucu stratejisi
+Mevcut sunucu stabilize edildi ama en guvenli nihai yol:
+- Yeni droplet'ler
+- Sadece yeni SSH key'ler
+- Root login yerine ayrik admin kullanicisi + sudo
+- Docker image/db/minio yedeklerinden restore
+- DNS cutover
+
+5. Mevcut sunucuda yapilabilecek sonraki sertlestirme
+- Docker compose port mapping'lerini sadece 127.0.0.1'e baglamak.
+- PostgreSQL/Redis/MinIO parolalarini rotate etmek.
+- Nginx ve app env secret'larini rotate etmek.
+- fail2ban veya crowdsec kurmak.
+- Auditd ile docker/ssh/root komut izleme baslatmak.
